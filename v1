@@ -1,0 +1,220 @@
+<script src="https://koda.nu/simple.js">
+  
+  
+  ///////////////////Vektoradditionen är trasig (troligen)
+  
+  /////Variabeldeklarationer
+  var OcDe=0.1
+  
+  const initialShipCount = 3
+ 
+  var ship = []
+  for(i=0; i<initialShipCount; i++)
+  {
+    ship.push({x: random(0,totalWidth), y: random(0,totalHeight), 
+               heading: new Vector(0,1),
+               velocity: new Vector(),
+               l:50, w:10, c:"black",
+               P:70, m:500, cargo:[]})}
+  
+  /////Vektorklass
+  function Vector(x,y)
+  {
+    this.x = x || 0
+    this.y = y || 0
+    
+    this.direction = function(){return Math.atan2(this.x, this.y)}
+    this.magnitude = function(){return (this.x**2+this.y**2)**0.5}
+    
+    this.vectorAdd = function(vector){this.x+=vector.x;this.y+=vector.y}
+    this.scalarM = function(scalar){this.x*=scalar;this.p*=scalar}
+    this.rotate = function(a)
+    {
+      this.x=this.x*cos(a)-this.y*sin(a)
+      this.y=this.y*cos(a)+this.x*sin(a)
+    }
+    
+    this.setDirection = function(a){this.x=cos(a);this.y=sin(a)}
+    this.setMagnitude = function(magnitude){this.x=cos(this.direction);
+                                            this.y=sin(this.direction)}
+  }
+  
+  
+  
+  
+  
+  /////Funktioner
+  
+  
+  
+ 
+  
+  ////Rörelsefunktioner
+  function accelerate(ship)
+  {
+    forceVector = new Vector()
+    forceVector.setDirection(ship.heading.direction())
+    forceVector.setMagnitude(ship.P/ship.m)
+    ship.velocity.vectorAdd(forceVector)
+    
+  }
+  
+  function turnLeft(ship)
+  {
+    ship.heading.rotate(-pi*ship.P/ship.m/updatesPerSecond)
+  }
+  
+  function turnRight(ship)
+  {
+    ship.heading.rotate(pi*ship.P/ship.m/updatesPerSecond)
+  }
+  
+  /////Startekvens
+  
+    
+  ship[0].x = totalWidth/2
+  ship[0].y = totalHeight/2
+  
+  /////Huvudloop
+  updatesPerSecond = 60
+  function update()
+  {
+    
+    ////Kinematik    
+    for(i=0; i<ship.length; i++)
+    {
+      ship[i].x += ship[i].velocity.x/updatesPerSecond
+      ship[i].y += ship[i].velocity.y/updatesPerSecond
+    
+      /*//Vattenmotstånd
+      ship[i].v -= Math.max(0,ship[i].v**2*OcDe*ship[i].l*
+      sin(ship[i].da-ship[i].va)/ship[i].m/updatesPerSecond)
+      ship[i].v -= Math.max(0,ship[i].v**2*OcDe*ship[i].w*
+      cos(ship[i].da-ship[i].va)/ship[i].m/updatesPerSecond)*/
+      
+      
+      
+      /*//Kollision
+      
+      
+        
+      xi1=-ship[i].w/2
+      xi2=ship[i].w/2
+       
+      yi1=-ship[i].l/2
+      yi2=ship[i].l/2
+      
+      i1=rotate(xi1,yi1,ship[i].x, ship[i].y,-ship[i].da)
+      i2=rotate(xi2,yi2,ship[i].x, ship[i].y,-ship[i].da)
+      
+      xi1=i1[0]
+      yi1=i1[1]
+      
+      xi2=i2[0]
+      yi2=i2[1]
+      
+      
+      m=rotate(mouse.f, mouse.y, ship[i].x, ship.y[i], -ship[i].da)
+     
+      mx=m[0]
+      my=m[1]
+      
+      if((mx>xi1 && mx<xi2 && my>yi1 && my<yi2))
+      {ship[i].c="blue"}
+        
+      
+      
+      
+      for(j=0; j<i; j++)
+      {        
+        xj1=ship[j].x-(ship[j].w/2*cos(ship[j].da)+ship[j].l/
+        2*sin(ship[j].da))
+        xj2=ship[j].x+(ship[j].w/2*cos(ship[j].da)+ship[j].l/
+        2*sin(ship[j].da))
+        
+        yj1=ship[j].y-(ship[j].w/2*sin(ship[j].da)+ship[j].l/
+        2*cos(ship[j].da))
+        yj2=ship[j].y+(ship[j].w/2*sin(ship[j].da)+ship[j].l/
+        2*cos(ship[j].da))
+        
+        if((xi1>xj1 && xi1<xj2 && yi1>yj1 && yi1<yj2) ||
+           (xi2>xj1 && xi2<xj2 && yi1>yj1 && yi1<yj2) ||
+           (xi2>xj1 && xi2<xj2 && yi2>yj1 && yi2<yj2) ||
+           (xi1>xj1 && xi1<xj2 && yi2>yj1 && yi2<yj2))
+        {ship[i].c="blue"; ship[j].c="red"}
+        
+      }
+      
+      for(j=i+1; j<shipCount; j++)
+      {        
+        xj1=ship[j].x-(ship[j].w/2*cos(ship[j].da)+ship[j].l/
+        2*sin(ship[j].da))
+        xj2=ship[j].x+(ship[j].w/2*cos(ship[j].da)+ship[j].l/
+        2*sin(ship[j].da))
+        
+        yj1=ship[j].y-(ship[j].w/2*sin(ship[j].da)+ship[j].l/
+        2*cos(ship[j].da))
+        yj2=ship[j].y+(ship[j].w/2*sin(ship[j].da)+ship[j].l/
+        2*cos(ship[j].da))
+        
+        if((xi1>xj1 && xi1<xj2 && yi1>yj1 && yi1<yj2) ||
+           (xi2>xj1 && xi2<xj2 && yi1>yj1 && yi1<yj2) ||
+           (xi2>xj1 && xi2<xj2 && yi2>yj1 && yi2<yj2) ||
+           (xi1>xj1 && xi1<xj2 && yi2>yj1 && yi2<yj2))
+        {ship[i].c="blue"; ship[j].c="red"}
+        
+      }*/
+      
+      
+    }
+    
+    ///Spelarkontroll
+    if(keyboard.w==true){accelerate(ship[0])}
+    if(keyboard.a==true){turnLeft(ship[0])}
+    if(keyboard.d==true){turnRight(ship[0])}
+    
+    
+    
+    ////Grafik
+    clearScreen()
+    
+   
+    
+    for(i=0; i<ship.length; i++)
+    {
+    
+      line(ship[i].x-ship[i].l/2*sin(ship[i].heading.direction()), 
+           ship[i].y-ship[i].l/2*cos(ship[i].heading.direction()),
+           ship[i].x+ship[i].l/2*sin(ship[i].heading.direction()),
+           ship[i].y+ship[i].l/2*cos(ship[i].heading.direction()),
+           ship[i].w, ship[i].c)
+      
+      text(ship[i].x, ship[i].y, 20, i, "green")
+    }
+    
+    forceVector = new Vector()
+    forceVector.setDirection(ship[0].heading.direction())
+    forceVector.setMagnitude(ship[0].P/ship[0].m)
+    
+    ////Diagnostik
+    text(100, 100, 20, ship[0].heading.direction(), "red")
+    text(100, 120, 20, ship[0].P/ship[0].m, "red")
+    text(100, 140, 20, ship[0].velocity.x, "red")
+    text(100, 160, 20, ship[0].velocity.y, "red")
+    text(100, 180, 20, forceVector.direction(), "red")
+    text(100, 200, 20, forceVector.magnitude(), "red")
+    
+    
+    
+    //circle(xi1, yi1, 4, "blue")
+    //circle(xi2, yi2, 4, "red")
+    
+    
+    
+    
+  
+  }
+  
+ 
+
+</script>
