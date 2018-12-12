@@ -1,0 +1,267 @@
+<script src="https://koda.nu/simple.js">
+  
+  /////Variabeldeklarationer
+  var OcDe=0.1
+  
+  const initialShipCount = 4
+ 
+  function Ship(x,y)
+  {
+      this.x = x || random(0,totalWidth), 
+      this.y = y || random(0,totalHeight),
+      this.z = 0, this.heading = 0,
+      this.velocity = new Vector(),
+      this.l = 50, this.w = 10,  this.c = "black",
+      this.P = 70, this.m = 200, this.cargo = []
+  }
+  var ship = []
+  for(i=0; i<initialShipCount; i++){ship.push(new Ship)}
+  
+  /////Vektorklass
+  function Vector(x,y)
+  {
+    this.x = x || 0
+    this.y = y || 0
+    
+    this.direction = function(){return Math.atan2(this.y, this.x)}
+    this.magnitude = function(){return (this.x**2+this.y**2)**0.5}
+    this.dotProd = function(vect2){return this.x*vect2.x+this.y*vect2.y}
+    
+    this.setDirection = function(a){m=this.magnitude();this.x=m*cos(a);
+                                    this.y=m*sin(a)}
+    this.setMagnitude = function(m){a=this.direction();this.x=m*cos(a);
+                                    this.y=m*sin(a)}
+    
+    this.addVector = function(vector){this.x+=vector.x;this.y+=vector.y}
+    this.scalarM = function(scalar){this.x*=scalar;this.y*=scalar}
+    this.lengthen = function(l)
+    {Math.max(0,this.setMagnitude(this.magnitude()+l))}
+    this.rotate = function(a){this.setDirection(this.direction()+a)}
+  }
+  
+  function vectorSum(vector1, vector2)
+    {
+      return new Vector(vector1.x+vector2.x,vector1.y+vector2.y)
+    }
+  
+  
+  
+  
+  
+  /////Funktioner
+  
+  
+  
+    
+  ////Bromskraftsfunktion
+  function dragForce(ship)
+  {
+    ///Ytvattenmotstånd
+    if(ship.z==0)
+    { 
+      lengthDrag = new Vector()
+      lengthDrag.setMagnitude(ship.velocity.magnitude()**2*OcDe*ship.l*
+                              abs(sin(ship.heading-
+                              ship.velocity.direction()))/ship.m/
+                              updatesPerSecond)
+      lengthDrag.setDirection(ship.heading+(pi/2)*Math.sign(sin(
+      ship.heading-ship.velocity.direction())))
+      
+      widthDrag = new Vector()
+      widthDrag.setMagnitude(ship.velocity.magnitude()**2*OcDe*ship.w*
+                              abs(cos(ship.heading-
+                              ship.velocity.direction()))/ship.m/
+                              updatesPerSecond)
+      widthDrag.setDirection(ship.heading+pi/2+(pi/2)*Math.sign(cos(
+      ship.heading-ship.velocity.direction())))
+      
+      netDrag = vectorSum(lengthDrag,widthDrag)
+      ship.velocity.addVector(netDrag)
+    }
+  }
+ 
+  
+  ////Rörelsefunktioner
+  function accelerate(ship)
+  {
+    forceVector = new Vector()
+    forceVector.setMagnitude(ship.P/ship.m)
+    forceVector.setDirection(ship.heading)
+    ship.velocity.addVector(forceVector) 
+  }
+  
+  function turnLeft(ship)
+  {
+    ship.heading -= ship.P*16000/(ship.l**2*pi*ship.m*updatesPerSecond)
+  }
+  
+  function turnRight(ship)
+  {
+    ship.heading += ship.P*16000/(ship.l**2*pi*ship.m*updatesPerSecond)
+  }
+  
+  /////Startekvens
+  
+  
+   A = new Vector (-1,3)
+    
+    B = new Vector(2,4)
+    
+    
+  ship[0].x = totalWidth/2
+  ship[0].y = totalHeight/2
+  
+  
+  
+  /////Huvudloop
+  updatesPerSecond = 60
+  function update()
+  {
+    
+    ////Kinematik    
+    for(i=0; i<ship.length; i++)
+    {
+      ship[i].x += ship[i].velocity.x/updatesPerSecond
+      ship[i].y += ship[i].velocity.y/updatesPerSecond
+    
+      ///Vattenmotstånd
+      
+      dragForce(ship[i])
+      
+      
+      
+      /*//Kollision
+      
+      
+        
+      xi1=-ship[i].w/2
+      xi2=ship[i].w/2
+       
+      yi1=-ship[i].l/2
+      yi2=ship[i].l/2
+      
+      i1=rotate(xi1,yi1,ship[i].x, ship[i].y,-ship[i].da)
+      i2=rotate(xi2,yi2,ship[i].x, ship[i].y,-ship[i].da)
+      
+      xi1=i1[0]
+      yi1=i1[1]
+      
+      xi2=i2[0]
+      yi2=i2[1]
+      
+      
+      m=rotate(mouse.f, mouse.y, ship[i].x, ship.y[i], -ship[i].da)
+     
+      mx=m[0]
+      my=m[1]
+      
+      if((mx>xi1 && mx<xi2 && my>yi1 && my<yi2))
+      {ship[i].c="blue"}
+        
+      
+      
+      
+      for(j=0; j<i; j++)
+      {        
+        xj1=ship[j].x-(ship[j].w/2*cos(ship[j].da)+ship[j].l/
+        2*sin(ship[j].da))
+        xj2=ship[j].x+(ship[j].w/2*cos(ship[j].da)+ship[j].l/
+        2*sin(ship[j].da))
+        
+        yj1=ship[j].y-(ship[j].w/2*sin(ship[j].da)+ship[j].l/
+        2*cos(ship[j].da))
+        yj2=ship[j].y+(ship[j].w/2*sin(ship[j].da)+ship[j].l/
+        2*cos(ship[j].da))
+        
+        if((xi1>xj1 && xi1<xj2 && yi1>yj1 && yi1<yj2) ||
+           (xi2>xj1 && xi2<xj2 && yi1>yj1 && yi1<yj2) ||
+           (xi2>xj1 && xi2<xj2 && yi2>yj1 && yi2<yj2) ||
+           (xi1>xj1 && xi1<xj2 && yi2>yj1 && yi2<yj2))
+        {ship[i].c="blue"; ship[j].c="red"}
+        
+      }
+      
+      for(j=i+1; j<shipCount; j++)
+      {        
+        xj1=ship[j].x-(ship[j].w/2*cos(ship[j].da)+ship[j].l/
+        2*sin(ship[j].da))
+        xj2=ship[j].x+(ship[j].w/2*cos(ship[j].da)+ship[j].l/
+        2*sin(ship[j].da))
+        
+        yj1=ship[j].y-(ship[j].w/2*sin(ship[j].da)+ship[j].l/
+        2*cos(ship[j].da))
+        yj2=ship[j].y+(ship[j].w/2*sin(ship[j].da)+ship[j].l/
+        2*cos(ship[j].da))
+        
+        if((xi1>xj1 && xi1<xj2 && yi1>yj1 && yi1<yj2) ||
+           (xi2>xj1 && xi2<xj2 && yi1>yj1 && yi1<yj2) ||
+           (xi2>xj1 && xi2<xj2 && yi2>yj1 && yi2<yj2) ||
+           (xi1>xj1 && xi1<xj2 && yi2>yj1 && yi2<yj2))
+        {ship[i].c="blue"; ship[j].c="red"}
+        
+      }*/
+      
+      
+    }
+    
+    ///Spelarkontroll
+    if(keyboard.w==true){accelerate(ship[0])}
+    if(keyboard.a==true){turnLeft(ship[0])}
+    if(keyboard.d==true){turnRight(ship[0])}
+    
+    if(keyboard.up==true){accelerate(ship[1])}
+    if(keyboard.left==true){turnLeft(ship[1])}
+    if(keyboard.right==true){turnRight(ship[1])}
+    
+    if(keyboard.enter){stopUpdate()}
+    
+    
+    ////Grafik
+    clearScreen()
+    
+   
+    
+    for(i=0; i<ship.length; i++)
+    {
+    
+      line(ship[i].x-ship[i].l/2*cos(ship[i].heading), 
+           ship[i].y-ship[i].l/2*sin(ship[i].heading),
+           ship[i].x+ship[i].l/2*cos(ship[i].heading),
+           ship[i].y+ship[i].l/2*sin(ship[i].heading),
+           ship[i].w, ship[i].c)
+      
+      
+      
+      
+      
+      
+      
+      text(ship[i].x, ship[i].y, 20, i, "green")
+    }
+    
+    
+
+    
+    ////Diagnostik
+    
+    text(100, 100, 20, floor(ship[0].velocity.x), "red")
+    text(100, 120, 20, floor(ship[0].velocity.y), "red")
+    text(100, 140, 20, floor(ship[0].velocity.magnitude()), "red")
+    text(100, 150, 20, "", "red")
+    
+    
+    
+    
+    
+    //circle(xi1, yi1, 4, "blue")
+    //circle(xi2, yi2, 4, "red")
+    
+    
+    
+    
+  
+  }
+  
+ 
+
+</script>
