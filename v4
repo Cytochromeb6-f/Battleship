@@ -1,0 +1,307 @@
+<script src="https://koda.nu/simple.js">
+  
+  ////fixa: kollisoner: lineIntersect är trasig		
+  ////, back (key.s), rotationströghet, , zoom & pan
+  
+  
+  
+  /////Variabeldeklarationer
+  var OcDe=0.1
+  
+  const initialShipCount = 2
+ 
+  A= false
+  
+  /////Object
+  
+  ////Skepp
+  function Ship(x,y,z,a)
+  {
+      this.body = new Body(x,y,z,a,rectangle, 100, 20)
+      this.v = new Vector(),
+      this.c = "black",
+      this.P = 70, 
+      this.m = 10, 
+      this.cargo = []
+      
+  }
+  var ship = []
+  for(i=0; i<initialShipCount; i++)
+  {ship.push(new Ship(random(0,totalWidth),random(0,totalHeight), 0, 0))}
+  
+  ////Formobjekt
+  function Body(x, y, z, a, shape, ...arg)
+  {
+    this.x = x
+    this.y = y
+    this.z = z
+    this.a = a
+    this.shape = shape
+    
+    this.L = []
+    
+    if(type=rectangle) 
+    {
+      this.l = arg[0]
+      this.w = arg[1]
+      
+      this.P1 = function()
+      {return{x:this.x+(+this.l/2*cos(this.a)-this.w/2*sin(this.a)),
+              y:this.y+(+this.w/2*cos(this.a)+this.l/2*sin(this.a))}}
+      this.P2 = function()
+      {return{x:this.x+(-this.l/2*cos(this.a)-this.w/2*sin(this.a)),
+              y:this.y+(+this.w/2*cos(this.a)-this.l/2*sin(this.a))}}
+      this.P3 = function()
+      {return{x:this.x+(-this.l/2*cos(this.a)+this.w/2*sin(this.a)),
+              y:this.y+(-this.w/2*cos(this.a)-this.l/2*sin(this.a))}}
+      this.P4 = function()
+      {return{x:this.x+(+this.l/2*cos(this.a)+this.w/2*sin(this.a)),
+              y:this.y+(-this.w/2*cos(this.a)+this.l/2*sin(this.a))}}
+      
+      this.L = function()
+      {return[new Line(this.P1().x, this.P1().y, this.P2().x, this.P2().y),
+              new Line(this.P2().x, this.P2().y, this.P3().x, this.P3().y),
+              new Line(this.P3().x, this.P3().y, this.P4().x, this.P4().y),
+              new Line(this.P4().x, this.P4().y, this.P1().x, this.P1().y)]}
+      
+    }
+  }
+  
+  
+  ////Linjeobjekt ax+by=c
+  function Line(x1, y1, x2, y2)
+  {
+    this.min = Math.min(x1,x2) 
+    this.max = Math.max(x1,x2)
+    this.a = y1-y2
+    this.b = -(x1-x2)
+    this.c = x1*(y1-y2)-y1*(x1-x2)
+  }
+  
+  function lineIntersect(L1,L2)
+  {
+    
+    x = (L1.b*L2.c-L2.b*L1.c)/(L2.a*L1.b-L1.a*L2.b)
+    y = (L2.a*L1.c-L1.a*L2.c)/(L2.a*L1.b-L1.a*L2.b)
+    
+    if(L1.minr<=x&&x<=L1.max && L2.min<=x&&x<=L2.max){return true}
+    else return y
+  }
+  
+  
+  
+  
+  ////Vektorobjekt
+  function Vector(x,y)
+  {
+    this.x = x || 0
+    this.y = y || 0
+    
+    this.direction = function(){return Math.atan2(this.y, this.x)}
+    this.magnitude = function(){return (this.x**2+this.y**2)**0.5}
+    this.dotProd = function(vect2){return this.x*vect2.x+this.y*vect2.y}
+    
+    this.setDirection = function(a){m=this.magnitude();this.x=m*cos(a);
+                                    this.y=m*sin(a)}
+    this.setMagnitude = function(m){a=this.direction();this.x=m*cos(a);
+                                    this.y=m*sin(a)}
+    
+    this.addVector = function(vector){this.x+=vector.x;this.y+=vector.y}
+    this.scalarM = function(scalar){this.x*=scalar;this.y*=scalar}
+    this.lengthen = function(l)
+    {Math.max(0,this.setMagnitude(this.magnitude()+l))}
+    this.rotate = function(a){this.setDirection(this.direction()+a)}
+  }
+  
+  function vectorSum(v1, v2){return new Vector(v1.x+v2.x,v1.y+v2.y)}
+  
+  
+  
+  
+  /////Funktioner
+  
+  
+  
+    
+  ////Bromskraftsfunktion
+  function dragForce(ship)
+  {
+    ///Ytvattenmotstånd
+    if(ship.body.z==0)
+    { 
+      lengthDrag = new Vector()
+      lengthDrag.setMagnitude(ship.v.magnitude()**2*OcDe*
+                              ship.body.l*abs(sin(ship.body.a-
+                              ship.v.direction()))/ship.m/
+                              updatesPerSecond)
+      lengthDrag.setDirection(ship.body.a+(pi/2)*Math.sign(sin(
+      ship.body.a-ship.v.direction())))
+      
+      widthDrag = new Vector()
+      widthDrag.setMagnitude(ship.v.magnitude()**2*OcDe*
+                             ship.body.w*abs(cos(ship.body.a-
+                             ship.v.direction()))/ship.m/
+                             updatesPerSecond)
+      widthDrag.setDirection(ship.body.a+pi/2+(pi/2)*Math.sign(cos(
+      ship.body.a-ship.v.direction())))
+      
+      netDrag = vectorSum(lengthDrag,widthDrag)
+      ship.v.addVector(netDrag)
+    }
+  }
+ 
+  
+  ////Rörelsefunktioner
+  function accelerate(ship)
+  {
+    forceVector = new Vector()
+    forceVector.setMagnitude(ship.P/ship.m)
+    forceVector.setDirection(ship.body.a)
+    ship.v.addVector(forceVector) 
+  }
+  
+  function turnLeft(ship)
+  {
+    ship.body.a-= ship.P*16000/(ship.body.l**2*pi*ship.m*
+                                  updatesPerSecond)
+  }
+  
+  function turnRight(ship)
+  {
+    ship.body.a += ship.P*16000/(ship.body.l**2*pi*ship.m*
+                                  updatesPerSecond)
+  }
+  
+  /////Startekvens
+    
+  
+  
+  
+  
+  /////Huvudloop
+  updatesPerSecond = 60
+  function update()
+  {
+    
+    ////Kinematik    
+    for(i=0; i<ship.length; i++)
+    {
+      ship[i].body.x += ship[i].v.x/updatesPerSecond
+      ship[i].body.y += ship[i].v.y/updatesPerSecond
+    
+      ///Vattenmotstånd
+      
+      dragForce(ship[i])
+      
+      
+      
+      ///Kollision
+      
+      for(j=0; j<i; j++)
+      {
+        for(k=0; k<ship[i].body.L.length; k++)
+        {
+          for(l=0; l<ship[j].body.L.length; l++)
+          {
+           if(lineIntersect(ship[i].body.L[k],ship[j].body.L[l])==true)
+           {A = true}
+          }
+        }
+          
+      }
+      
+      for(j=i+1; j<ship.length; j++)
+      {
+        for(k=0; k<ship[i].body.L.length; k++)
+        {
+          for(l=0; l<ship[j].body.L.length; l++)
+          {
+           if(lineIntersect(ship[i].body.L[k],ship[j].body.L[l])==true)
+           {A = true}
+          }
+        }
+          
+      }
+      
+      
+    }
+    
+    ///Spelarkontroll
+    if(keyboard.w==true){accelerate(ship[0])}
+    if(keyboard.a==true){turnLeft(ship[0])}
+    if(keyboard.d==true){turnRight(ship[0])}
+    
+    
+    
+    
+    if(keyboard.enter){stopUpdate()}
+    
+    
+    ////Grafik
+    clearScreen()
+    
+   
+    
+    for(i=0; i<ship.length; i++)
+    {
+    
+      if(ship[i].body.shape == rectangle)
+      {
+        line(ship[i].body.x-ship[i].body.l/2*cos(ship[i].body.a), 
+             ship[i].body.y-ship[i].body.l/2*sin(ship[i].body.a),
+             ship[i].body.x+ship[i].body.l/2*cos(ship[i].body.a),
+             ship[i].body.y+ship[i].body.l/2*sin(ship[i].body.a),
+             ship[i].body.w, ship[i].c)
+        
+        line(ship[i].body.P1().x, ship[i].body.P1().y,
+             ship[i].body.P2().x, ship[i].body.P2().y, 4, "red" )
+        line(ship[i].body.P2().x, ship[i].body.P2().y,
+             ship[i].body.P3().x, ship[i].body.P3().y, 4, "red" )
+        line(ship[i].body.P3().x, ship[i].body.P3().y,
+             ship[i].body.P4().x, ship[i].body.P4().y, 4, "red" )
+        line(ship[i].body.P4().x, ship[i].body.P4().y,
+             ship[i].body.P1().x, ship[i].body.P1().y, 4, "red" )
+      }
+      
+      circle(ship[i].body.P1().x,ship[i].body.P1().y, 5, "blue")
+      circle(ship[i].body.P2().x,ship[i].body.P2().y, 5, "blue")
+      circle(ship[i].body.P3().x,ship[i].body.P3().y, 5, "blue")
+      circle(ship[i].body.P4().x,ship[i].body.P4().y, 5, "blue")
+      
+      
+      
+      
+      
+      
+    }
+    
+    B= new Line(0, 2, 4, 2)
+    C= new Line(3, 4, 4, 0)
+    
+    D = lineIntersect(B,C)
+    
+    ////Diagnostik
+    
+    text(100, 100, 20, floor(ship[0].body.x), "red")
+    text(100, 120, 20, floor(ship[0].body.y), "red")
+    text(100, 140, 20, floor(ship[0].v.magnitude()), "red")
+    text(100, 160, 20, A, "red")
+    text(100, 180, 20, lineIntersect(ship[0].body.L()[1],ship[1].body.L()[1]), 
+         "red")
+    text(100, 200, 20, ship[0].body.L()[0].a, "red")
+    text(100, 220, 20, ship[0].body.L()[0].b, "red")
+    text(100, 240, 20, ship[0].body.L()[0].c, "red")
+    
+    
+    
+
+    
+    
+    
+    
+  
+  }
+  
+ 
+
+</script>
