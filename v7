@@ -1,0 +1,426 @@
+<script src="https://koda.nu/simple.js">
+  
+  ////fixa: kollisoner ej anpassade till massan, zoom & pan
+  
+  
+  
+  /////Variabeldeklarationer
+  var OcDe=0.1
+  
+  const initialShipCount = 2
+ 
+  
+  
+  /////Object
+  
+  ////Skepp
+  function Ship(x,y,z,angle)
+  {
+      this.body = new Body(x, y, z, angle, "rectangle", 50, 10)
+      this.v = new Vector()
+      this.av = 0
+      this.c = "black"
+      this.P = 70
+      this.m = 100
+      this.p = function() {return new Vector(this.v.x*this.m,this.v.y*this.m)}
+      this.cargo = []
+      this.target = new Point(this.body.x, this.body.y)
+      
+  }
+  var ship = []
+    
+  ////Missil
+  function Missile(x, y, z, m, v, type, ...arg)
+  {
+    this.x = x
+    this.y = y
+    this.z = z
+    this.m = m
+    this.v = new Vector()
+    this.type = type
+    
+  }
+  var missile = []
+  
+  ////Formobjekt
+  function Body(x, y, z, angle, shape, ...arg)
+  {
+    this.x = x
+    this.y = y
+    this.z = z
+    this.angle = angle
+    this.shape = shape
+    
+    if(shape == "rectangle") 
+    {
+      this.l = arg[0]
+      this.w = arg[1]
+      
+      this.vertex = function()
+      {
+        var list =
+      [new Point(this.x+(+this.l/2*cos(this.angle)-this.w/2*sin(this.angle)),
+                 this.y+(+this.w/2*cos(this.angle)+this.l/2*sin(this.angle))),
+       new Point(this.x+(-this.l/2*cos(this.angle)-this.w/2*sin(this.angle)),
+                 this.y+(+this.w/2*cos(this.angle)-this.l/2*sin(this.angle))),
+       new Point(this.x+(-this.l/2*cos(this.angle)+this.w/2*sin(this.angle)),
+                 this.y+(-this.w/2*cos(this.angle)-this.l/2*sin(this.angle))),
+       new Point(this.x+(+this.l/2*cos(this.angle)+this.w/2*sin(this.angle)),
+                 this.y+(-this.w/2*cos(this.angle)+this.l/2*sin(this.angle)))]
+        return list
+      }
+    }
+      
+      this.edge = function()
+      {
+        var list = []
+        for(var i=0; i<this.vertex().length; i++)
+        {list[i] = new Line(this.vertex()[i],
+                            this.vertex()[(i+1)%this.vertex().length])}
+        
+        return list
+      }    
+  }
+  
+  
+  ////Punktobjekt
+  function Point(x, y){this.x = x; this.y = y}
+  
+  ////Linjeobjekt ax+by=c
+  function Line(P1, P2)
+  {
+    this.minX = Math.min(P1.x, P2.x) 
+    this.maxX = Math.max(P1.x, P2.x)
+    this.minY = Math.min(P1.y, P2.y) 
+    this.maxY = Math.max(P1.y, P2.y)
+    this.a = P1.y-P2.y
+    this.b = -(P1.x-P2.x)
+    this.c = P1.x*(P1.y-P2.y)-P1.y*(P1.x-P2.x)
+  }
+  
+  function lineIntersect(L1,L2)
+  {
+    x = (L1.b*L2.c-L2.b*L1.c)/(L2.a*L1.b-L1.a*L2.b)
+    y = (L2.a*L1.c-L1.a*L2.c)/(L2.a*L1.b-L1.a*L2.b)
+      
+    if(L1.minX<=x&&x<=L1.maxX && L2.minX<=x&&x<=L2.maxX &&
+       L1.minY<=y&&y<=L1.maxY && L2.minY<=y&&y<=L2.maxY)
+    {
+      if(L1.a==L2.a && L1.b==L2.b && L1.c==L2.c)
+      {return new Point((L1.maxX+L1.minX)/2,(L1.maxY+L1.minY)/2)}
+      else return new Point(x,y)
+    }
+    else return false
+  }
+  
+  
+  
+  
+  ////Vektorobjekt
+  function Vector(x, y, z)
+  {
+    this.x = x || 0
+    this.y = y || 0
+    this.z = z || 0
+    
+    this.direction = function(){return Math.atan2(this.y, this.x)}
+    this.magnitude = function(){return (this.x**2+this.y**2+this.z**2)**0.5}
+    this.dotProd = function(vect2){return this.x*vect2.x+this.y*vect2.y+
+      this.z*vect2.z}
+    
+    
+    this.set = function(x, y, z)
+    {
+      this.x = x || this.x
+      this.y = y || this.y
+      this.z = z || this.z
+    }
+    this.setDirection = function(a){m=this.magnitude();this.x=m*cos(a);
+                                    this.y=m*sin(a)}
+    this.setMagnitude = function(m){a=this.direction();this.x=m*cos(a);
+                                    this.y=m*sin(a)}
+    
+    this.addVector = function(vector)
+    {
+      this.x += vector.x
+      this.y += vector.y
+      this.z += vector.z
+    }
+    this.scalarM = function(scalar)
+    {
+      this.x *= scalar
+      this.y *= scalar
+      this.z *= scalar
+    }
+    this.lengthen = function(l)
+    {
+      Math.max(0,this.setMagnitude(this.magnitude()+l))
+    }
+    this.rotate = function(a){this.setDirection(this.direction()+a)}
+  }
+  
+  function vectorSum(v1, v2){return new Vector(v1.x+v2.x,v1.y+v2.y)}
+  
+  
+  
+  
+  /////Funktioner
+  
+  
+  
+    
+  ////Bromskraftsfunktion
+  function dragForce(ship)
+  {
+    ///Ytvattenmotstånd
+    if(ship.body.z==0)
+    {
+      ship.av *= 0.95
+      
+      lengthDrag = new Vector()
+      lengthDrag.setMagnitude(ship.v.magnitude()**2*OcDe*
+                              ship.body.l*abs(sin(ship.body.angle-
+                              ship.v.direction()))/ship.m/
+                              updatesPerSecond)
+      lengthDrag.setDirection(ship.body.angle+(pi/2)*Math.sign(sin(
+      ship.body.angle-ship.v.direction())))
+      
+      widthDrag = new Vector()
+      widthDrag.setMagnitude(ship.v.magnitude()**2*OcDe*
+                             ship.body.w*abs(cos(ship.body.angle-
+                             ship.v.direction()))/ship.m/
+                             updatesPerSecond)
+      widthDrag.setDirection(ship.body.angle+pi/2+(pi/2)*Math.sign(cos(
+      ship.body.angle-ship.v.direction())))
+      
+      netDrag = vectorSum(lengthDrag,widthDrag)
+      ship.v.addVector(netDrag)
+    }
+  }
+ 
+  
+  ////Rörelsefunktioner
+  function accelerate(ship)
+  {
+    forceVector = new Vector()
+    forceVector.setMagnitude(ship.P/ship.m)
+    forceVector.setDirection(ship.body.angle)
+    ship.v.addVector(forceVector) 
+  }
+  function decelerate(ship)
+  {
+    forceVector = new Vector()
+    forceVector.setMagnitude(ship.P/2/ship.m)
+    forceVector.setDirection(ship.body.angle+pi)
+    ship.v.addVector(forceVector) 
+  }
+  function turnLeft(ship)
+  {
+    ship.av -= ship.P*30000/(ship.body.l**2*pi*ship.m)/updatesPerSecond
+  }
+  function turnRight(ship)
+  {
+    ship.av += ship.P*30000/(ship.body.l**2*pi*ship.m)/updatesPerSecond
+  }
+  
+  ///Fullständigt inelastisk kollision
+  function collide(ship1, ship2)
+  {
+    if(ship1.v != ship2.v)
+    {
+      v = vectorSum(ship1.p(),ship2.p())
+      v.scalarM(1/(ship1.m+ship2.m))
+      
+      ship1.v.set(v.x,v.y)
+      ship2.v.set(v.x,v.y)
+      
+      av = 0//(ship1.av*ship1.m+ship2.av*ship2.m)/(ship1.m+ship2.m)
+      ship1.av = av
+      ship2.av = av
+      
+    }    
+  }
+  
+  ///Gravitation
+  function gravity(object){if(object.z>0){object.v.z -= 9.8}}
+  
+  
+  
+  
+  
+  
+  /////Startekvens
+  
+  for(i=0; i<initialShipCount; i++)
+  {ship.push(new Ship(totalWidth*(i+1)/3, totalHeight/2, 0, i*pi))}
+  
+  missile.push(new Missile(totalWidth/2, totalHeight/2, 256, 0, 0, "kinetic"))
+  
+  A = false
+  
+  updatesPerSecond = 60
+  
+  var second = 1/updatesPerSecond
+  
+  var time = 0
+  
+  
+  
+  //////Huvudloop
+  function update()
+  {
+    
+    time += second
+    
+    clearScreen()
+    
+    /////Mekanik
+    
+    ////Skepp
+    for(i=0; i<ship.length; i++)
+    {
+      ///Rörelse
+      ship[i].body.x += ship[i].v.x/updatesPerSecond
+      ship[i].body.y += ship[i].v.y/updatesPerSecond
+      ship[i].body.angle += ship[i].av/updatesPerSecond
+    
+      ///Vattenmotstånd
+      
+      dragForce(ship[i])
+      
+      
+      ///Kollision
+      for(j=0,termin=false; j<i; j++)
+      {
+        if(termin==true){break}
+        for(k=0; k<ship[i].body.edge().length; k++)
+        {
+          if(termin==true){break}
+          for(l=0; l<ship[j].body.edge().length; l++)
+          {
+            if(termin==true){break}
+            A = lineIntersect(ship[i].body.edge()[k],ship[j].body.edge()[l])
+            circle(A.x,A.y,10,"green")
+            if(A!=false)
+            {
+              termin = true
+              
+              collide(ship[i], ship[j])
+              
+              break
+            }
+          }
+        }
+      }
+      
+      for(j=i+1; j<ship.length; j++)
+      {
+        if(termin==true){break}
+        for(k=0; k<ship[i].body.edge().length; k++)
+        {
+          if(termin==true){break}
+          for(l=0; l<ship[j].body.edge().length; l++)
+          {
+            if(termin==true){break}
+            A = lineIntersect(ship[i].body.edge()[k],ship[j].body.edge()[l])
+            circle(A.x,A.y,10,"green")
+            if(A!=false)
+            {
+              termin=true
+              
+              collide(ship[i], ship[j])
+              
+              break
+            }
+          }
+        }
+      }
+    }
+    
+    ////Missiler
+    for(i=0; i<missile.length; i++)
+    {
+      ///Mekanik
+      missile[i].x += missile[i].v.x/updatesPerSecond
+      missile[i].y += missile[i].v.y/updatesPerSecond
+      if(missile[i].z>0){missile[i].z += missile[i].v.z/updatesPerSecond}
+      
+      ///Gravitation
+      gravity(missile[i])
+    
+    }  
+    
+    ///Spelarkontroll
+    if(keyboard.w==true){accelerate(ship[0])}
+    if(keyboard.s==true){decelerate(ship[0])}
+    if(keyboard.a==true){turnLeft(ship[0])}
+    if(keyboard.d==true){turnRight(ship[0])}
+    
+    if(keyboard.up==true){accelerate(ship[1])}
+    if(keyboard.down==true){decelerate(ship[1])}
+    if(keyboard.left==true){turnLeft(ship[1])}
+    if(keyboard.right==true){turnRight(ship[1])}
+    
+    
+    
+    
+    if(keyboard.enter){stopUpdate()}
+    
+    
+    
+    /////Grafik
+    
+    ////Missiler
+    for(i=0; i<missile.length; i++)
+    {
+      circle(missile[i].x, missile[i].y, 2, 
+             mixColor(256, missile[i].z, missile[i].z))
+    }
+    
+    
+    ////Skepp
+    for(i=0; i<ship.length; i++)
+    {
+    
+      if(ship[i].body.shape == "rectangle")
+      {
+        line(ship[i].body.x-ship[i].body.l/2*cos(ship[i].body.angle), 
+             ship[i].body.y-ship[i].body.l/2*sin(ship[i].body.angle),
+             ship[i].body.x+ship[i].body.l/2*cos(ship[i].body.angle),
+             ship[i].body.y+ship[i].body.l/2*sin(ship[i].body.angle),
+             ship[i].body.w, ship[i].c)
+      }
+      
+      
+      
+      circle(ship[i].target.x, ship[i].target.y,4, "green")
+    }
+    
+    
+    
+    
+    /////Diagnostik
+    
+    
+    
+    text(100, 100, 20, floor(ship[0].body.x), "red")
+    text(100, 120, 20, floor(ship[0].body.y), "red")
+    text(100, 140, 20, floor(ship[0].v.magnitude()), "red")
+    text(100, 160, 20, missile[0].z, "red")
+    text(100, 180, 20, "", "red")
+    text(100, 200, 20, "", "red")
+    text(100, 220, 20, "", "red")
+    
+    
+    
+
+    
+    
+    
+    
+  
+  }
+  
+ 
+
+</script>
